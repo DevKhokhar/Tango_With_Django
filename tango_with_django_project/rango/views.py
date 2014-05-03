@@ -1,21 +1,43 @@
 from django.http import HttpResponse
 from django.template import RequestContext
 from django.shortcuts import render_to_response
+from models import Category, Page
 
 def index(request):
-     # Request the context of the request.
-    # The context contains information such as the client's machine details, for example.
     context = RequestContext(request)
 
-    # Construct a dictionary to pass to the template engine as its context.
-    # Note the key boldmessage is the same as {{ boldmessage }} in the template!
-    context_dict = {'boldmessage': "I am bold font from the context"}
+    category_list = Category.objects.order_by('-likes')[:5]
+    context_dict = {'categories': category_list}
+    for category in category_list:
+        category.url = encode_category_url(category.name)
 
-    # Return a rendered response to send to the client.
-    # We make use of the shortcut function to make our lives easier.
-    # Note that the first parameter is the template we wish to use.
-    #return render_to_response('/Users/devangak/Development/Tango_With_Django/tango_with_django_project/templates/rango/index.html', context_dict, context)
-    return render_to_response('../templates/rango/index.html', context_dict, context)
+    page_list = Page.objects.order_by('-views')[:5]
+    context_dict['pages'] = page_list
+
+    return render_to_response('rango/index.html', context_dict, context)
 
 def about(request):
     return HttpResponse("Rango Says: Here is the about page. <a href='/rango/'>Index</a>")
+
+def category(request, category_name_url):
+    context = RequestContext(request)
+
+    category_name = decode_category_name_url(category_name_url)
+
+    context_dict = {'category_name': category_name}
+
+    try:
+        category = Category.objects.get(name=category_name)
+        pages = Page.objects.filter(category=category)
+        context_dict['pages'] = pages
+        context_dict['category'] = category
+    except Category.DoesNotExist:
+        pass
+
+    return render_to_response('rango/category.html', context_dict, context)
+
+def decode_category_name_url(category_name_url):
+    return category_name_url.replace('_', ' ')
+
+def encode_category_url(category_name):
+    return category_name.replace(' ', '_')
